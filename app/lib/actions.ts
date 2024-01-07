@@ -18,6 +18,7 @@ const FormSchema = z.object({
 // coerce: 타입 강제
 // enum: 특정한 값'만' 가질 수 있게 설정 가능
 
+// 스키마 생성
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 // omit: 특정 필드를 제외한 새로운 스키마 생성. 필드는 key, 값에는 true or false. true일 경우 해당 필드는 스키마에서 제외됨.
 
@@ -43,4 +44,32 @@ export async function createInvoice(formData: FormData) {
 
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
+}
+
+// 스키마 수정
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
+ 
+export async function updateInvoice(id: string, formData: FormData) {
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+ 
+  const amountInCents = amount * 100;
+ 
+  await sql`
+    UPDATE invoices
+    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+    WHERE id = ${id}
+  `;
+ 
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+
+// 스키마 삭제
+export async function deleteInvoice(id: string) {
+  await sql`DELETE FROM invoices WHERE id = ${id}`;
+  revalidatePath('/dashboard/invoices');
 }
