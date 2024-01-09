@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { lusitana } from '@/app/ui/fonts';
 import {
@@ -10,9 +10,14 @@ import { ArrowRightIcon } from '@heroicons/react/20/solid';
 import { Button } from './button';
 import { useFormState, useFormStatus } from 'react-dom';
 import { authenticate } from '@/app/lib/actions';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'login',
+};
 
 export default function LoginForm() {
-    const [errorMessage, dispatch] = useFormState(authenticate, undefined);
+  const [errorMessage, dispatch] = useFormState(authenticate, undefined);
 
   return (
     <form action={dispatch} className="space-y-3">
@@ -83,7 +88,7 @@ export default function LoginForm() {
 }
 
 function LoginButton() {
-    const { pending } = useFormStatus();
+  const { pending } = useFormStatus();
   return (
     <Button className="mt-4 w-full" aria-disabled={pending}>
       Log in <ArrowRightIcon className="ml-auto h-5 w-5 text-gray-50" />
