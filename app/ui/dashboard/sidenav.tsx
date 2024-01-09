@@ -2,6 +2,7 @@ import Link from 'next/link';
 import NavLinks from '@/app/ui/dashboard/nav-links';
 import AcmeLogo from '@/app/ui/acme-logo';
 import { PowerIcon } from '@heroicons/react/24/outline';
+import { signOut } from '@/auth';
 
 export default function SideNav() {
   return (
@@ -11,6 +12,12 @@ export default function SideNav() {
         href="/"
       >
         <div className="w-32 text-white md:w-40">
+          <form
+            action={async () => {
+              'use server';
+              await signOut();
+            }}
+          ></form>
           <AcmeLogo />
         </div>
       </Link>

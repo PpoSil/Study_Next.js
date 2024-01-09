@@ -50,3 +50,19 @@ ex) 텍스트가 없는 이미지가 있는 경우 -> `alt`, `aria-*` 및 `role`
 45:25  Warning: Image elements must have an alt prop,
 either with meaningful text, or an empty string for decorative images. jsx-a11y/alt-text
 ```
+
+## 인증 추가  NextAuth.js
+- NextAuth.js는 세션 관리, 로그인 및 로그아웃, 기타 인증 측면과 관련된 많은 복잡성을 추상화
+
+```
+//  Next.js 14와 호환되는 NextAuth.js 버전을 설치
+npm install next-auth@beta
+
+// .env파일에서 생성된 키를 AUTH_SECRET변수에 추가
+openssl rand -base64 32
+
+AUTH_SECRET=your-secret-key
+```
+
+- 미들웨어: 미들웨어가 인증을 확인할 때까지 보호된 경로가 렌더링을 시작하지 않아 애플리케이션의 보안과 성능이 모두 향상된다는 이점
+- 비밀번호 해싱: 해싱은 비밀번호를 무작위로 나타나는 고정 길이의 문자열로 변환하여 사용자 데이터가 노출되더라도 보안 계층을 제공

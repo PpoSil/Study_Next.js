@@ -7,6 +7,9 @@ import { revalidatePath } from 'next/cache';
 // 캐시된 오래된 정보를 지우고 새로운 정보를 서버에 요청하는 과정을 자동으로 수행 가능
 // 이를 통해 사용자는 항상 최신 정보를 볼 수 있게 됨.
 import { redirect } from 'next/navigation';
+// 인증 로직과 로그인 양식 연결
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
 
 const FormSchema = z.object({
   id: z.string(),
@@ -38,14 +41,14 @@ export type State = {
 };
 
 export async function createInvoice(prevState: State, formData: FormData) {
-    // parse: 입력된 데이터가 해당 스키마에 부합하는지 검증하는 역할. 부합하면 {}의 데이터 반환. 부합하지 않으면 에러 발생.
-    const validatedFields = CreateInvoice.safeParse({
-      customerId: formData.get('customerId'),
-      amount: formData.get('amount'),
-      status: formData.get('status'),
-    });
+  // parse: 입력된 데이터가 해당 스키마에 부합하는지 검증하는 역할. 부합하면 {}의 데이터 반환. 부합하지 않으면 에러 발생.
+  const validatedFields = CreateInvoice.safeParse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
 
-    if (!validatedFields.success) {
+  if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Missing Fields. Failed to Create Invoice.',
@@ -87,17 +90,17 @@ export async function updateInvoice(
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
- 
+
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: 'Missing Fields. Failed to Update Invoice.',
     };
   }
- 
+
   const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
- 
+
   try {
     await sql`
       UPDATE invoices
@@ -107,7 +110,7 @@ export async function updateInvoice(
   } catch (error) {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
- 
+
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
 }
@@ -123,5 +126,25 @@ export async function deleteInvoice(id: string) {
     return { message: 'Deleted Invoice.' };
   } catch (error) {
     return { message: 'Database Error: Failed to Delete Invoice.' };
+  }
+}
+
+// 인증
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signIn('credentials', formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          return 'Something went wrong.';
+      }
+    }
+    throw error;
   }
 }
