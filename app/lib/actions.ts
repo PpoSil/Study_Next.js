@@ -10,9 +10,15 @@ import { redirect } from 'next/navigation';
 
 const FormSchema = z.object({
   id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
+  customerId: z.string({
+    invalid_type_error: 'Please select a customer.',
+  }),
+  amount: z.coerce
+    .number()
+    .gt(0, { message: 'Please enter an amount greater than $0.' }),
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Please select an invoice status.',
+  }),
   date: z.string(),
 });
 // coerce: 타입 강제
@@ -22,22 +28,39 @@ const FormSchema = z.object({
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
 // omit: 특정 필드를 제외한 새로운 스키마 생성. 필드는 key, 값에는 true or false. true일 경우 해당 필드는 스키마에서 제외됨.
 
-export async function createInvoice(formData: FormData) {
-  const { customerId, amount, status } = CreateInvoice.parse({
-    // parse: 입력된 데이터가 해당 스키마에 부합하는지 검증하는 역할. 부합하면 {}의 데이터 반환. 부합하지 않으면 에러 발생.
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
+export type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+};
 
+export async function createInvoice(prevState: State, formData: FormData) {
+    // parse: 입력된 데이터가 해당 스키마에 부합하는지 검증하는 역할. 부합하면 {}의 데이터 반환. 부합하지 않으면 에러 발생.
+    const validatedFields = CreateInvoice.safeParse({
+      customerId: formData.get('customerId'),
+      amount: formData.get('amount'),
+      status: formData.get('status'),
+    });
+
+    if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    };
+  }
+
+  const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split('T')[0];
 
   try {
     await sql`
-    INSERT INTO invoices (customer_id, amount, status, date) 
-    VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-  `;
+      INSERT INTO invoices (customer_id, amount, status, date) 
+      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
+    `;
     // await 키워드는 Promise를 기다리는 역할
     // sql은 SQL 쿼리를 실행하는 함수
     // 'invoices' 테이블에 'customer_id', 'amount', 'status', 'date'라는 4개의 필드에 데이터를 넣겠다는 의미
@@ -54,32 +77,45 @@ export async function createInvoice(formData: FormData) {
 // 스키마 수정
 const UpdateInvoice = FormSchema.omit({ id: true, date: true });
 
-export async function updateInvoice(id: string, formData: FormData) {
-  const { customerId, amount, status } = UpdateInvoice.parse({
+export async function updateInvoice(
+  id: string,
+  prevState: State,
+  formData: FormData,
+) {
+  const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
-
+ 
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Update Invoice.',
+    };
+  }
+ 
+  const { customerId, amount, status } = validatedFields.data;
   const amountInCents = amount * 100;
-
+ 
   try {
     await sql`
-    UPDATE invoices
-    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-    WHERE id = ${id}
-  `;
+      UPDATE invoices
+      SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+      WHERE id = ${id}
+    `;
   } catch (error) {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
-
+ 
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
 }
 
 // 스키마 삭제
 export async function deleteInvoice(id: string) {
-  throw new Error('Failed to Delete Invoice');
+  // 에러 뜨게 하려면 밑에 주석 제거
+  // throw new Error('Failed to Delete Invoice');
 
   try {
     await sql`DELETE FROM invoices WHERE id = ${id}`;
